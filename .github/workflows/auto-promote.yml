@@ -1,0 +1,90 @@
+name: Auto-Promote to Main
+
+# This workflow automatically promotes develop to main when all tests pass
+# Triggered after successful completion of "Build and Test" workflow on develop branch
+#
+# Template Variables:
+#   minecraft-plugin-manager - Name of the project (for commit messages)
+
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    types: [completed]
+    branches: [develop]
+
+jobs:
+  promote:
+    # Only run if the test workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to push to main branch
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for all branches
+        ref: develop
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Fetch main branch
+      run: |
+        git fetch origin main:main
+
+    - name: Check if promotion needed
+      id: check
+      run: |
+        # Get the latest commit on develop
+        DEVELOP_SHA=$(git rev-parse develop)
+
+        # Get the latest commit on main
+        MAIN_SHA=$(git rev-parse main)
+
+        echo "Develop SHA: $DEVELOP_SHA"
+        echo "Main SHA: $MAIN_SHA"
+
+        if [ "$DEVELOP_SHA" = "$MAIN_SHA" ]; then
+          echo "Main is already up to date with develop"
+          echo "needs_promotion=false" >> $GITHUB_OUTPUT
+        else
+          echo "Main needs to be updated"
+          echo "needs_promotion=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Merge develop into main
+      if: steps.check.outputs.needs_promotion == 'true'
+      run: |
+        echo "Checking out main branch..."
+        git checkout main
+
+        echo "Merging develop into main..."
+        git merge develop --no-ff -m "chore: auto-promote develop to main after successful CI
+
+        All tests passed on develop branch.
+
+        Workflow run: ${{ github.event.workflow_run.html_url }}
+        Commit: ${{ github.event.workflow_run.head_sha }}"
+
+    - name: Push to main
+      if: steps.check.outputs.needs_promotion == 'true'
+      run: |
+        echo "Pushing main branch to remote..."
+        git push origin main
+
+    - name: Create promotion summary
+      if: steps.check.outputs.needs_promotion == 'true'
+      run: |
+        echo "✅ Successfully promoted develop to main!"
+        echo "Main branch is now at: $(git rev-parse main)"
+        echo "View the changes: https://github.com/${{ github.repository }}/compare/main"
+
+    - name: Skip promotion message
+      if: steps.check.outputs.needs_promotion == 'false'
+      run: |
+        echo "ℹ️ Skipping promotion - main is already up to date with develop"
