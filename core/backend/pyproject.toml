@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minecraft-plugin-manager"
+version = "1.0.0"
+description = "Automated plugin update management for Minecraft servers (Velocity + Paper)"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Claude Code", email = "noreply@anthropic.com"}
+]
+keywords = ["minecraft", "plugins", "automation", "bedrock", "geyser", "velocity", "paper"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: System Administrators",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Games/Entertainment",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "requests>=2.31.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+minecraft-plugin-manager = "minecraft_plugin_manager.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/anthropics/claude-code"
+Documentation = "https://github.com/anthropics/claude-code/tree/main/projects/minecraft-plugin-manager"
+Repository = "https://github.com/anthropics/claude-code"
+Issues = "https://github.com/anthropics/claude-code/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["minecraft_plugin_manager*"]
+exclude = ["tests*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.pytest.ini_options]
+testpaths = ["../../tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=minecraft_plugin_manager --cov-report=term-missing"

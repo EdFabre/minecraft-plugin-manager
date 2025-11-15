@@ -1,0 +1,45 @@
+project_name: minecraft-plugin-manager
+version: 1.0.0
+ai_workflow_enabled: true
+components:
+  core:
+    description: Automated plugin update management for Minecraft servers
+    areas:
+      backend:
+        implementation_type: backend
+        status: active
+        path: core/backend
+      docs:
+        implementation_type: docs
+        status: active
+        path: core/docs
+      tests:
+        implementation_type: tests
+        status: pending
+        path: core/tests
+branches:
+  main: main
+  develop: develop
+metadata:
+  created_at: '2025-11-15T19:00:00Z'
+  created_by: claude-code
+  last_updated: '2025-11-15T19:00:00Z'
+  description: Lifecycle-managed CLI tool for automated Minecraft plugin updates
+  coverage: 7 managed plugins (Bedrock cross-play + Tier 1 infrastructure)
+  infrastructure:
+    - Velocity 3.4.0-SNAPSHOT (build 557+)
+    - Paper 1.20.1
+    - Pterodactyl deployment
+version_files:
+  - path: core/backend/pyproject.toml
+    pattern: 'version = "{version}"'
+    type: toml
+  - path: core/backend/minecraft_plugin_manager/__init__.py
+    pattern: '__version__ = "{version}"'
+    type: python
+  - path: .lifecycle/state.yaml
+    pattern: 'version: {version}'
+    type: yaml
+  - path: README.md
+    pattern: '**Version:** {version}'
+    type: markdown
