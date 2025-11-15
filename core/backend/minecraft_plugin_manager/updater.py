@@ -33,14 +33,21 @@ logger = logging.getLogger(__name__)
 class MinecraftPluginUpdater:
     """Main plugin updater orchestrator"""
 
-    def __init__(self, dry_run: bool = False, force: bool = False):
+    def __init__(self, dry_run: bool = False, force: bool = False, config: Optional[Dict] = None):
         """
         Args:
             dry_run: Preview mode - no actual changes
             force: Include SNAPSHOT/dev versions
+            config: Optional configuration dict (from config.yaml)
         """
         self.dry_run = dry_run
         self.force = force
+        self.config = config or {}
+
+        # Use config values or fall back to defaults
+        self.servers = self.config.get('servers', SERVERS)
+        self.managed_plugins = self.config.get('managed_plugins', MANAGED_PLUGINS)
+
         self.manifest = self.load_manifest()
         self.deployment_state = self.load_deployment_state()
         self.updates_available = {}
@@ -102,7 +109,7 @@ class MinecraftPluginUpdater:
 
         updates = {}
 
-        for plugin_name, config in MANAGED_PLUGINS.items():
+        for plugin_name, config in self.managed_plugins.items():
             logger.info(f"\nChecking: {plugin_name}")
 
             # Get current version from manifest
@@ -228,14 +235,14 @@ class MinecraftPluginUpdater:
 
         # Deploy each plugin to its target servers
         for plugin_name, jar_path in downloads.items():
-            plugin_config = MANAGED_PLUGINS[plugin_name]
+            plugin_config = self.managed_plugins[plugin_name]
             platforms = plugin_config["platforms"]
 
             logger.info(f"Deploying: {plugin_name}")
 
             # Find servers that need this plugin
             target_servers = []
-            for server_name, server_config in SERVERS.items():
+            for server_name, server_config in self.servers.items():
                 if server_config["platform"] in platforms:
                     target_servers.append(server_name)
 
@@ -441,7 +448,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
                     version = plugin_info.get("version", "unknown")
 
                     # Check if this plugin is managed by the tool
-                    is_managed = plugin_name in MANAGED_PLUGINS
+                    is_managed = plugin_name in self.managed_plugins
                     managed_marker = "🔧" if is_managed else "  "
 
                     logger.info(f"    {managed_marker} {plugin_name}: {version}")
@@ -449,7 +456,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
             logger.info("")
 
         # Summary of managed plugins
-        managed_count = len([p for p in MANAGED_PLUGINS.keys()])
+        managed_count = len([p for p in self.managed_plugins.keys()])
         logger.info(f"Managed Plugins: {managed_count}")
         logger.info("  🔧 = Managed by this tool\n")
 
@@ -468,7 +475,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>"""
 
         # Group servers by platform type
         platforms = {}
-        for server_name, server_config in SERVERS.items():
+        for server_name, server_config in self.servers.items():
             platform = server_config["platform"]
             if platform not in platforms:
                 platforms[platform] = []

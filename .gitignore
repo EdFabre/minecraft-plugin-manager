@@ -48,3 +48,10 @@ htmlcov/
 
 # Distribution
 *.whl
+
+# Configuration files with secrets
+config.yaml
+!config_example.yaml
+
+# Session logs
+ai-config/

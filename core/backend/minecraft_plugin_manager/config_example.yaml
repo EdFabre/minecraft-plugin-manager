@@ -1,0 +1,150 @@
+# Minecraft Plugin Manager Configuration
+# Copy this file to ~/.config/minecraft-plugin-manager/config.yaml or config.yaml in project root
+
+# Pterodactyl Panel Connection
+pterodactyl:
+  panel_url: "https://panel.example.com"  # Your Pterodactyl panel URL
+  api_key: "ptlc_your_api_key_here"       # Your API key (client or application key)
+  # Optional: Use environment variable instead for security
+  # api_key_env: "PTERODACTYL_API_KEY"
+
+# SSH Connection for Direct Volume Access (optional if using Pterodactyl API)
+ssh:
+  host: "192.168.1.71"                    # Node IP address
+  user: "root"                             # SSH user
+  key_path: "~/.ssh/id_rsa_root"          # Path to SSH private key
+  # Optional: password (not recommended, use key-based auth)
+  # password: "your_password"
+
+# Server Configuration
+# Define your Minecraft servers and which plugins they should have
+servers:
+  minecraft-proxy-0:                      # Server identifier (must be unique)
+    uuid: "b57a0213-6e24-429a-9fdd-241f82c397d1"  # Pterodactyl server UUID
+    platform: "velocity"                   # Platform type: velocity, paper, spigot, etc.
+    minecraft_version: "velocity-3.4.0"   # Optional: Minecraft version
+    node: "games-node-1"                   # Optional: Node name for logging
+    plugins:                               # Plugins that should be installed on this server
+      - ViaVersion
+      - Geyser-Velocity
+      - floodgate-velocity
+      - LuckPerms-Velocity
+
+  minecraft-lobby-0:
+    uuid: "4178f798-1bfd-4482-b011-198601dcbe7e"
+    platform: "paper"
+    minecraft_version: "1.20.1"
+    node: "games-node-1"
+    plugins:
+      - ViaVersion
+      - floodgate-spigot
+      - LuckPerms-Bukkit
+      - PlaceholderAPI
+
+  minecraft-game-0:
+    uuid: "your-game-server-uuid"
+    platform: "paper"
+    minecraft_version: "1.20.1"
+    node: "games-node-1"
+    plugins:
+      - ViaVersion
+      - floodgate-spigot
+      - LuckPerms-Bukkit
+      - PlaceholderAPI
+
+  minecraft-respack-0:
+    uuid: "your-respack-server-uuid"
+    platform: "paper"
+    minecraft_version: "1.20.1"
+    node: "games-node-1"
+    plugins:
+      - ViaVersion
+      - floodgate-spigot
+      - LuckPerms-Bukkit
+
+# Plugin Definitions
+# These define the plugins that can be managed by the tool
+managed_plugins:
+  # Bedrock Cross-Play (Critical)
+  ViaVersion:
+    source: "modrinth"
+    project_id: "viaversion"
+    platforms: ["velocity", "paper", "spigot"]
+    tier: "bedrock"
+    critical: true
+
+  Geyser-Velocity:
+    source: "geyser"
+    project: "geyser"
+    artifact: "velocity"
+    platforms: ["velocity"]
+    tier: "bedrock"
+    critical: true
+
+  floodgate-velocity:
+    source: "geyser"
+    project: "floodgate"
+    artifact: "velocity"
+    platforms: ["velocity"]
+    tier: "bedrock"
+    critical: true
+
+  floodgate-spigot:
+    source: "geyser"
+    project: "floodgate"
+    artifact: "spigot"
+    platforms: ["paper", "spigot"]
+    tier: "bedrock"
+    critical: true
+
+  # Tier 1: Permissions & Infrastructure
+  LuckPerms-Bukkit:
+    source: "modrinth"
+    project_id: "Vebnzrzj"
+    platforms: ["paper", "spigot"]
+    tier: "tier1"
+    critical: true
+
+  LuckPerms-Velocity:
+    source: "modrinth"
+    project_id: "Vebnzrzj"
+    platforms: ["velocity"]
+    tier: "tier1"
+    critical: true
+
+  PlaceholderAPI:
+    source: "modrinth"
+    project_id: "PlaceholderAPI"
+    platforms: ["paper", "spigot"]
+    tier: "tier1"
+    critical: true
+
+# File Locations
+# Override default locations if needed
+paths:
+  downloads: "/mnt/tank/faststorage/general/repo/minecraft/downloads"
+  shared_plugins: "/mnt/tank/faststorage/general/repo/minecraft/shared-plugins"
+  manifest: "/mnt/tank/faststorage/general/repo/minecraft/shared-plugins/shared-plugins.json"
+  deployment_state: "/mnt/tank/faststorage/general/repo/minecraft/checksums/deployment-state.json"
+
+# Infrastructure Compatibility Requirements
+# Define minimum versions for infrastructure components
+compatibility:
+  Geyser-Velocity:
+    requires:
+      velocity:
+        min_build: 500
+        reason: "Geyser 2.9.0+ requires Adventure library API (ComponentFlattener.nestingLimit)"
+
+  floodgate-velocity:
+    requires:
+      velocity:
+        min_build: 400
+        reason: "Modern floodgate requires Velocity 3.4.0+"
+
+# Auto-Discovery Settings
+discovery:
+  enabled: true                             # Enable Pterodactyl auto-discovery
+  filter_by_tag: "minecraft"               # Optional: Only discover servers with this tag
+  filter_by_node: null                     # Optional: Only discover servers on specific node
+  auto_detect_platform: true               # Auto-detect platform from server startup command

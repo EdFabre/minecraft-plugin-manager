@@ -20,6 +20,12 @@ cd /mnt/tank/faststorage/general/repo
 source .venv/bin/activate  # or use 'repo' alias
 pip install -e projects/minecraft-plugin-manager/core/backend/
 
+# Run setup wizard (first time)
+minecraft-plugin-manager --init
+
+# Auto-discover servers from Pterodactyl
+minecraft-plugin-manager --discover
+
 # Check status
 minecraft-plugin-manager --status
 
@@ -33,19 +39,29 @@ minecraft-plugin-manager --deploy
 ## Documentation
 
 - **[Quick Start Guide](core/docs/QUICK_START.md)** - Common commands and workflows
+- **[Configuration Guide](core/docs/CONFIGURATION.md)** - Setup wizard, Pterodactyl discovery, config file format
 - **[Usage Guide](core/docs/AUTOMATION_USAGE.md)** - Detailed usage documentation
 - **[Test Results](core/docs/TEST_RESULTS.md)** - Comprehensive test report
 
 ## Features
 
-- ✅ Automated update detection (Modrinth + Geyser APIs)
-- ✅ SHA256/SHA512 hash verification
-- ✅ Pre-flight safety checks (SSH, disk space, permissions)
-- ✅ Infrastructure compatibility validation
-- ✅ Automatic backups before deployment
-- ✅ Emergency rollback capability
-- ✅ Version consistency checking across servers
-- ✅ Git integration for audit trail
+- ✅ **Configuration & Discovery**:
+  - Interactive setup wizard (`--init`)
+  - Pterodactyl API auto-discovery (`--discover`)
+  - YAML configuration files
+  - Environment variable substitution
+
+- ✅ **Update Management**:
+  - Automated update detection (Modrinth + Geyser APIs)
+  - SHA256/SHA512 hash verification
+  - Pre-flight safety checks (SSH, disk space, permissions)
+  - Infrastructure compatibility validation
+
+- ✅ **Deployment Safety**:
+  - Automatic backups before deployment
+  - Emergency rollback capability
+  - Version consistency checking across servers
+  - Git integration for audit trail
 
 ## Managed Plugins (7)
 
