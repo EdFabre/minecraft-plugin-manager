@@ -12,6 +12,16 @@ from pathlib import Path
 
 from . import __version__
 from .updater import MinecraftPluginUpdater
+
+try:
+    from ef_metrics import track_command, track_operation
+except ImportError:
+    def track_command(tool_name, command=None):
+        def decorator(func): return func
+        return decorator
+    def track_operation(name, op_type="other"):
+        from contextlib import nullcontext
+        return nullcontext()
 from .deployment import DeploymentManager
 from .config import BASE_DIR
 from .config_loader import load_config, validate_config, save_config
@@ -304,6 +314,7 @@ def run_discovery(config: dict = None) -> int:
         return 1
 
 
+@track_command(tool_name="minecraft-plugin-manager")
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
