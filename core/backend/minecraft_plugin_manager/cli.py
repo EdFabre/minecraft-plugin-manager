@@ -17,12 +17,10 @@ from .config import BASE_DIR
 from .config_loader import load_config, validate_config, save_config
 from .pterodactyl import PterodactylClient
 
-try:
-    from ef_metrics.agent.logging import setup_logging as _ef_setup, log_event as _ef_log_event, new_trace as _ef_new_trace, clear_trace as _ef_clear_trace
-    _ef_setup("minecraft-plugin-manager", also_stdout=False)
-    _HAS_EF_LOGGING = True
-except ImportError:
-    _HAS_EF_LOGGING = False
+from .json_log import setup_logging as _jl_setup, new_trace as _jl_trace
+import logging as _logging
+_jl_setup(also_stdout=False)
+_jl = _logging.getLogger("minecraft_plugin_manager")
 
 # Logging setup
 def setup_logging():
@@ -308,12 +306,7 @@ def run_discovery(config: dict = None) -> int:
 
 def main():
     """Main CLI entry point"""
-    # Native structured JSON logging
-    import time as _time
-    _ef_start = _time.monotonic()
-    _ef_cmd = "unknown"
-    if _HAS_EF_LOGGING:
-        _ef_new_trace()
+    _jl_trace()
 
     parser = argparse.ArgumentParser(
         description=f"Minecraft Plugin Manager v{__version__} - Automated update system for Minecraft plugins",
