@@ -12,21 +12,10 @@ from pathlib import Path
 
 from . import __version__
 from .updater import MinecraftPluginUpdater
-
-try:
-    from ef_metrics import track_command, track_operation
-except ImportError:
-    def track_command(tool_name, command=None):
-        def decorator(func): return func
-        return decorator
-    def track_operation(name, op_type="other"):
-        from contextlib import nullcontext
-        return nullcontext()
 from .deployment import DeploymentManager
 from .config import BASE_DIR
 from .config_loader import load_config, validate_config, save_config
 from .pterodactyl import PterodactylClient
-
 
 try:
     from ef_metrics.agent.logging import setup_logging as _ef_setup, log_event as _ef_log_event, new_trace as _ef_new_trace, clear_trace as _ef_clear_trace
@@ -50,9 +39,7 @@ def setup_logging():
     )
     return logging.getLogger(__name__)
 
-
 logger = setup_logging()
-
 
 def run_update_workflow(updater: MinecraftPluginUpdater, check_only: bool = False,
                         download_only: bool = False, deploy: bool = False) -> int:
@@ -123,7 +110,6 @@ def run_update_workflow(updater: MinecraftPluginUpdater, check_only: bool = Fals
         return 0
 
     return 0
-
 
 def run_init_wizard() -> int:
     """
@@ -219,7 +205,6 @@ def run_init_wizard() -> int:
     else:
         logger.error("\n✗ Failed to save configuration")
         return 1
-
 
 def run_discovery(config: dict = None) -> int:
     """
@@ -321,8 +306,6 @@ def run_discovery(config: dict = None) -> int:
         logger.exception(f"\n✗ Discovery failed: {e}")
         return 1
 
-
-@track_command(tool_name="minecraft-plugin-manager")
 def main():
     """Main CLI entry point"""
     # Native structured JSON logging
@@ -456,7 +439,6 @@ Documentation:
     except Exception as e:
         logger.exception(f"Unexpected error: {e}")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())
