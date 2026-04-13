@@ -23,13 +23,12 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.12"
 ]
 
 dependencies = [
     "requests>=2.31.0",
-    "pyyaml>=6.0",
-    "ef-metrics @ git+ssh://git@github.com/EdFabre/ef-metrics.git#subdirectory=core/backend",
+    "pyyaml>=6.0"
 ]
 
 [project.optional-dependencies]
@@ -37,7 +36,7 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "black>=23.0",
-    "ruff>=0.1.0",
+    "ruff>=0.1.0"
 ]
 
 [project.scripts]
