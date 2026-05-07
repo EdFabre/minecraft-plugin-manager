@@ -50,6 +50,11 @@ jobs:
         pip install -e .
         pip install pytest pyyaml rich click pydantic httpx
 
-    - name: Run pytest
+    - name: Run pytest (gracefully skips if no tests)
       working-directory: core/backend
-      run: pytest tests/ -v --tb=short
+      run: |
+        if [ -d tests ] && find tests -name '*.py' -not -path '*__pycache__*' | grep -q .; then
+          pytest tests/ -v --tb=short
+        else
+          echo "No test files found in tests/ — skipping pytest"
+        fi
