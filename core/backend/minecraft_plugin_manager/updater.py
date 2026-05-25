@@ -56,7 +56,7 @@ class MinecraftPluginUpdater:
         self.modrinth_client = ModrinthAPIClient(force_snapshots=force)
         self.geyser_client = GeyserAPIClient()
         self.downloader = PluginDownloader(dry_run=dry_run)
-        self.deployer = DeploymentManager(dry_run=dry_run)
+        self.deployer = DeploymentManager(dry_run=dry_run, servers=self.servers)
 
     def load_manifest(self) -> dict:
         """Load shared-plugins.json manifest"""
@@ -240,9 +240,11 @@ class MinecraftPluginUpdater:
 
             logger.info(f"Deploying: {plugin_name}")
 
-            # Find servers that need this plugin
+            # Find servers that need this plugin (skip inactive)
             target_servers = []
             for server_name, server_config in self.servers.items():
+                if not server_config.get("active", True):
+                    continue
                 if server_config["platform"] in platforms:
                     target_servers.append(server_name)
 

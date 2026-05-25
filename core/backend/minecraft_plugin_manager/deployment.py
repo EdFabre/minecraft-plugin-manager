@@ -30,8 +30,11 @@ logger = logging.getLogger(__name__)
 class DeploymentManager:
     """Manages plugin deployment operations"""
 
-    def __init__(self, dry_run: bool = False):
+    def __init__(self, dry_run: bool = False, servers: Optional[dict] = None):
         self.dry_run = dry_run
+        # Prefer servers from runtime config; fall back to hardcoded SERVERS
+        # const so callers that don't pass it still work.
+        self.servers = servers if servers is not None else SERVERS
 
     def run_preflight_checks(self) -> Tuple[bool, List[str]]:
         """
@@ -116,7 +119,7 @@ class DeploymentManager:
         Returns:
             True if successful
         """
-        server_config = SERVERS[server_name]
+        server_config = self.servers[server_name]
         server_uuid = server_config["uuid"]
 
         # Construct remote paths
@@ -152,6 +155,34 @@ class DeploymentManager:
             perms_cmd = f"ssh -i {SSH_KEY} {NODE_USER}@{NODE_HOST} 'chown 988:988 {remote_jar_path} && chmod 644 {remote_jar_path}'"
             subprocess.run(perms_cmd, shell=True, check=True, timeout=10)
 
+            # Archive prior-version jars of this same plugin. Without this,
+            # both old and new jars sit in plugins/ and the server's plugin
+            # loader picks one nondeterministically — silently running the
+            # old version. Match by the first token of the filename
+            # (e.g. "ViaVersion-5.9.1.jar" → token "viaversion"), case-
+            # insensitive, then rename siblings to .preupgrade-<ts>.
+            stem_token = re.split(r'[-_]', remote_jar_name, maxsplit=1)[0].lower()
+            archive_suffix = f".preupgrade-{timestamp}"
+            # shell snippet: list *.jar siblings (not the new one, not already
+            # archived), filter by leading token case-insensitively, rename.
+            archive_cmd = (
+                f"ssh -i {SSH_KEY} {NODE_USER}@{NODE_HOST} "
+                f"\"cd {remote_plugins_dir} && "
+                f"for f in *.jar; do "
+                f"[ \\\"$f\\\" = \\\"{remote_jar_name}\\\" ] && continue; "
+                f"low=\\$(echo \\\"$f\\\" | tr '[:upper:]' '[:lower:]'); "
+                f"case \\\"$low\\\" in {stem_token}-*|{stem_token}_*) "
+                f"mv -- \\\"$f\\\" \\\"$f{archive_suffix}\\\" && "
+                f"echo archived: $f ;; esac; "
+                f"done\""
+            )
+            archive_result = subprocess.run(
+                archive_cmd, shell=True, capture_output=True, text=True, timeout=15
+            )
+            for line in archive_result.stdout.splitlines():
+                if line.startswith("archived:"):
+                    logger.info(f"  Archived prior version: {line.split(': ', 1)[1]}")
+
             logger.info(f"  ✓ Deployed to {server_name}: {plugin_name}")
             return True
 
@@ -172,7 +203,7 @@ class DeploymentManager:
         Returns:
             True if successful
         """
-        server_uuid = SERVERS[server_name]["uuid"]
+        server_uuid = self.servers[server_name]["uuid"]
 
         if self.dry_run:
             logger.info(f"[DRY RUN] Would restart {server_name}")
@@ -203,7 +234,7 @@ class DeploymentManager:
         Returns:
             True if verified
         """
-        server_uuid = SERVERS[server_name]["uuid"]
+        server_uuid = self.servers[server_name]["uuid"]
         log_path = f"/var/lib/pterodactyl/volumes/{server_uuid}/logs/latest.log"
 
         if self.dry_run:
@@ -305,7 +336,7 @@ class DeploymentManager:
             Build number or None if not found
         """
         proxy_server = None
-        for server_name, config in SERVERS.items():
+        for server_name, config in self.servers.items():
             if config["platform"] == "velocity":
                 proxy_server = server_name
                 break
@@ -314,13 +345,21 @@ class DeploymentManager:
             logger.warning("No Velocity server found in configuration")
             return None
 
-        server_uuid = SERVERS[proxy_server]["uuid"]
-        log_path = f"/var/lib/pterodactyl/volumes/{server_uuid}/logs/latest.log"
+        server_uuid = self.servers[proxy_server]["uuid"]
+        log_dir = f"/var/lib/pterodactyl/volumes/{server_uuid}/logs"
 
         try:
-            # Extract Velocity version from logs
-            cmd = f"ssh -i {SSH_KEY} {NODE_USER}@{NODE_HOST} \"grep 'Booting up Velocity' {log_path} | tail -1\""
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+            # Extract Velocity version from logs. Check latest.log first, fall
+            # back to rotated .log.gz archives so a long-running proxy whose
+            # boot line has aged out of latest.log still validates.
+            remote = (
+                "{ "
+                f"grep -h 'Booting up Velocity' {log_dir}/latest.log 2>/dev/null; "
+                f"zgrep -h 'Booting up Velocity' {log_dir}/*.log.gz 2>/dev/null; "
+                "} | tail -1"
+            )
+            cmd = f"ssh -i {SSH_KEY} {NODE_USER}@{NODE_HOST} \"{remote}\""
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
 
             if result.stdout:
                 # Parse build number from output like: "git-a046f700-b557"
