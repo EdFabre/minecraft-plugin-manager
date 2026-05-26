@@ -8,13 +8,56 @@ import hashlib
 import logging
 import re
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Set
 
 import requests
 
 from .config import MODRINTH_API, GEYSER_API, DOWNLOADS_DIR
 
 logger = logging.getLogger(__name__)
+
+
+# Maps a config-side platform name (what users write in config.yaml under
+# `platforms:`) to the set of Modrinth `loaders` field values that are
+# binary-compatible with it. Modrinth tags one artifact with multiple loaders
+# when it works for several (e.g. a Paper plugin is usually tagged
+# ["bukkit", "paper", "spigot"]), so an intersection-based filter handles all
+# the common shapes without per-platform special cases.
+_PLATFORM_TO_LOADERS: Dict[str, Set[str]] = {
+    "paper": {"paper", "bukkit", "spigot", "folia"},
+    "spigot": {"spigot", "bukkit", "paper"},
+    "bukkit": {"bukkit", "paper", "spigot"},
+    "folia": {"folia", "paper"},
+    "velocity": {"velocity"},
+    "bungee": {"bungeecord", "waterfall"},
+    "bungeecord": {"bungeecord", "waterfall"},
+    "waterfall": {"waterfall", "bungeecord"},
+    "fabric": {"fabric"},
+    "forge": {"forge"},
+    "neoforge": {"neoforge"},
+}
+
+
+def _acceptable_loaders(platforms: Optional[List[str]]) -> Optional[Set[str]]:
+    """Resolve config `platforms:` list to the set of Modrinth loaders that
+    should be considered compatible. Returns None when no filter should apply
+    (caller didn't specify, or specified an unknown platform we'd rather
+    leave permissive than guess wrong on).
+    """
+    if not platforms:
+        return None
+    accepted: Set[str] = set()
+    for p in platforms:
+        key = p.lower()
+        if key in _PLATFORM_TO_LOADERS:
+            accepted.update(_PLATFORM_TO_LOADERS[key])
+        else:
+            # Unknown platform — fall back to literal match rather than
+            # silently dropping it. Logged once at debug so misspellings are
+            # discoverable without spamming.
+            logger.debug(f"Unknown platform '{p}' — using literal loader match")
+            accepted.add(key)
+    return accepted
 
 
 class ModrinthAPIClient:
@@ -27,12 +70,19 @@ class ModrinthAPIClient:
         """
         self.force_snapshots = force_snapshots
 
-    def check_updates(self, project_id: str) -> Optional[Dict]:
+    def check_updates(self, project_id: str, platforms: Optional[List[str]] = None) -> Optional[Dict]:
         """
         Check for updates from Modrinth API
 
         Args:
             project_id: Modrinth project identifier
+            platforms: Optional list of platform names (as in config.yaml
+                `platforms:` — e.g. ["paper"] or ["velocity"]). When given,
+                only versions whose Modrinth loaders are compatible with at
+                least one of these platforms are considered. Without this,
+                multi-loader projects like LuckPerms return whichever artifact
+                is newest overall (often -fabric/-neoforge), which is wrong
+                for Paper/Velocity deploys.
 
         Returns:
             Dict with version info, or None if error
@@ -49,15 +99,30 @@ class ModrinthAPIClient:
                 logger.warning(f"No versions found for {project_id}")
                 return None
 
-            # Get latest RELEASE version (skip snapshots unless forced)
+            accepted_loaders = _acceptable_loaders(platforms)
+
+            # Get latest RELEASE version (skip snapshots unless forced) whose
+            # loaders intersect the requested platforms. Modrinth returns
+            # versions newest-first so a linear scan is sufficient.
             latest = None
             for version in versions:
-                if version["version_type"] == "release" or self.force_snapshots:
-                    latest = version
-                    break
+                if version["version_type"] != "release" and not self.force_snapshots:
+                    continue
+                if accepted_loaders is not None:
+                    version_loaders = set(version.get("loaders", []))
+                    if not (version_loaders & accepted_loaders):
+                        continue
+                latest = version
+                break
 
             if not latest:
-                logger.warning(f"No stable release found for {project_id}")
+                if accepted_loaders is not None:
+                    logger.warning(
+                        f"No release found for {project_id} matching loaders "
+                        f"{sorted(accepted_loaders)} (from platforms={platforms})"
+                    )
+                else:
+                    logger.warning(f"No stable release found for {project_id}")
                 return None
 
             file_info = latest["files"][0]

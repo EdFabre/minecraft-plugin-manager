@@ -126,7 +126,9 @@ class MinecraftPluginUpdater:
             # Check for latest version based on source
             latest_info = None
             if config["source"] == "modrinth":
-                latest_info = self.modrinth_client.check_updates(config["project_id"])
+                latest_info = self.modrinth_client.check_updates(
+                    config["project_id"], platforms=config.get("platforms")
+                )
             elif config["source"] == "geyser":
                 latest_info = self.geyser_client.check_updates(config["project"], config["artifact"])
             else:
